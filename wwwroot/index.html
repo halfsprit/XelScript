@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <style>
+        body {
+            overflow: hidden;
+            background-color: rgba(66, 65, 65, 0.795);
+        }
+
+        #editor {
+            overflow: auto;
+            height: 80vh;
+        }
+
+        #result {
+            overflow: auto;
+            height: 19vh;
+            margin-top: 1px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<div id="editor"></div>
+<div id="result"></div>
+<script src="./min/vs/loader.js"></script>
+<script>
+    function syncEval(script) {
+        try {
+            const result = eval(script);
+            window.chrome.webview.postMessage(result);
+        } catch (e) {
+            window.chrome.webview.postMessage('ERROR:' + e.message);
+        }
+    }
+    var editor, result;
+    require.config({
+        paths: { vs: './min/vs', node_modules: './node_modules' },
+        'vs/nls': {
+            availableLanguages: {
+                '*': 'zh-cn'
+            }
+        }
+    });
+
+    require(['vs/editor/editor.main'], () => {
+        monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+            target: monaco.languages.typescript.ScriptTarget.ES2016,
+            allowNonTsExtensions: true,
+            moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+            module: monaco.languages.typescript.ModuleKind.CommonJS,
+            noEmit: true,
+            allowJs: true,
+            checkJs: true,
+            declaration: true,
+            typeRoots: ['node_modules/@type']
+        });
+        editor = monaco.editor.create(document.getElementById('editor'), {
+            language: 'javascript',
+            automaticLayout: true,
+            minimap: {
+                enabled: false
+            },
+            lineNumbersMinChars: 2,
+            mouseWheelZoom: true,
+            wordWrap: 'on',
+        });
+        result = monaco.editor.create(document.getElementById('result'), {
+            language: 'text/plain',
+            minimap: {
+                enabled: false
+            },
+            mouseWheelZoom: true,
+            automaticLayout: true,
+            lineNumbersMinChars: 2,
+            wordWrap: 'on',
+            unicodeHighlight: {
+                ambiguousCharacters: false,
+            }
+        });
+        monaco.editor.addKeybindingRule({
+            keybinding: monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyY,
+            command: 'editor.action.deleteLines',
+            when: 'editorTextFocus',
+        });
+        editor.addCommand(monaco.KeyCode.F9, () => { window.chrome.webview.postMessage({ command: 'run', script: editor.getValue() }); });
+        editor.onDidChangeModelContent(e => window.chrome.webview.postMessage({ command: 'ContentChanged' }));
+        window.chrome.webview.addEventListener('message', e => {
+            let jData = JSON.parse(e.data);
+            if (jData.command === 'print') {
+                result.executeEdits('', [
+                    {
+                        range: result.getSelection(),
+                        text: jData.value,
+                        forceMoveMarkers: true
+                    }
+                ])
+            }
+            else if (jData.command === 'FileOpen') {
+                editor.setValue(jData.value);
+                window.chrome.webview.postMessage({ command: jData.command });
+            } else if (jData.command === 'AddLib') {
+                monaco.languages.typescript.javascriptDefaults.addExtraLib(jData.value, '');
+            } else if (jData.command === 'Run') {
+                window.chrome.webview.postMessage({ command: jData.command, value: editor.getValue() });
+            } else if (jData.command === 'Eval') {
+                window.chrome.webview.postMessage({ command: jData.command, value: editor.getValue() });
+            } else if (jData.command === 'GetValue') {
+                window.chrome.webview.postMessage({ command: jData.command, value: editor.getValue() });
+            } else if (jData.command === 'SetValue') {
+                editor.setValue(jData.value);
+            } else if (jData.command === 'SetResult') {
+                result.setValue(jData.value);
+            }
+            else if (jData.command === 'FileNew') {
+                editor.setValue('');
+                window.chrome.webview.postMessage({ command: jData.command });
+            }
+        });
+    });
+
+</script>
+
+</html>
