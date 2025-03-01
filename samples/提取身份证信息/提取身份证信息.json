@@ -1,0 +1,1 @@
+{"input":"a2:a12","input_type":"单元格名称","output":"b2","output_type":"单元格名称","code":"[e.value.slice(6, 6 + 8), e.value.slice(-1) % 2 ? '男' : '女']"}
