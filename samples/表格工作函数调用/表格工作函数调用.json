@@ -1,0 +1,1 @@
+{"input":"c2:f11","input_type":"单元格名称","output":"g2","output_type":"单元格名称","code":"[wf.sum(e), wf.max(e), wf.average(e)]"}
